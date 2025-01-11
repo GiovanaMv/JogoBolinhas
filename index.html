@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo das Bolinhas</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        .score {
+            position: absolute;
+            top: 10px;
+            font-size: 24px;
+            color: #ffffff;
+            font-weight: bold;
+        }
+
+        body.phase-1 {
+            background: radial-gradient(circle, #A8E6CF, #fff3a6, #ffa0ad);
+            animation: backgroundMovement 5s infinite alternate;
+        }
+
+        body.phase-2 {
+            background: radial-gradient(circle,#39FF14, #FF4500, #00FFFF);
+            animation: backgroundMovement 5s infinite alternate;
+        }
+
+        body.phase-3 {
+            background: radial-gradient(circle, #ffee00, #FF1493, #7400e0);
+            animation: backgroundMovement 5s infinite alternate;
+        }
+
+        @keyframes backgroundMovement {
+            0% { background-position: 0% 0%; }
+            100% { background-position: 100% 100%; }
+        }
+    </style>
+</head>
+<body class="phase-1">
+    <div class="score">Pontos: <span id="score">0</span></div>
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        const player = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            radius: 30,
+            color: 'white'
+        };
+
+        const balls = [];
+        const ballColorsPhase1 = ['#b4e1ff', '#ffd400', '#fface4', '#affc41', '#b80c09'];
+        const ballColorsPhase2 = [' #00FFFF', '#FF4500', '#2f0e07', '#006400'];
+        const ballColorsPhase3 = ['#FF4500', '#32CD32', '#7400e0', '#ffee00', '#333333'];
+        let currentPhase = 1;
+        let ballSpeed = 1.5;
+        let score = 0;
+
+        function drawPlayer() {
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+            ctx.fillStyle = player.color;
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        function createBall() {
+            const size = Math.random() * 15 + 15;
+            const color = (
+                currentPhase === 1 ? ballColorsPhase1 :
+                currentPhase === 2 ? ballColorsPhase2 : ballColorsPhase3
+            )[Math.floor(Math.random() * (
+                currentPhase === 1 ? ballColorsPhase1.length :
+                currentPhase === 2 ? ballColorsPhase2.length : ballColorsPhase3.length
+            ))];
+            const side = Math.floor(Math.random() * 4);
+            let x, y;
+
+            if (side === 0) {
+                x = -size;
+                y = Math.random() * canvas.height;
+            } else if (side === 1) {
+                x = canvas.width + size;
+                y = Math.random() * canvas.height;
+            } else if (side === 2) {
+                x = Math.random() * canvas.width;
+                y = -size;
+            } else {
+                x = Math.random() * canvas.width;
+                y = canvas.height + size;
+            }
+
+            const angle = Math.atan2(player.y - y, player.x - x);
+            const velocity = {
+                x: Math.cos(angle) * ballSpeed,
+                y: Math.sin(angle) * ballSpeed
+            };
+
+            balls.push({ x, y, size, color, velocity });
+        }
+
+        function drawBalls() {
+            balls.forEach(ball => {
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, ball.size, 0, Math.PI * 2);
+                ctx.fillStyle = ball.color;
+                ctx.fill();
+                ctx.closePath();
+            });
+        }
+
+        function updateBalls() {
+            balls.forEach((ball, index) => {
+                ball.x += ball.velocity.x;
+                ball.y += ball.velocity.y;
+
+                const distToPlayer = Math.hypot(ball.x - player.x, ball.y - player.y);
+                if (distToPlayer < ball.size + player.radius) {
+                    resetGame();
+                }
+
+                if (
+                    ball.x < -ball.size ||
+                    ball.x > canvas.width + ball.size ||
+                    ball.y < -ball.size ||
+                    ball.y > canvas.height + ball.size
+                ) {
+                    balls.splice(index, 1);
+                }
+            });
+        }
+
+        function resetGame() {
+            balls.length = 0;
+            score = 0;
+            document.getElementById('score').textContent = score;
+            currentPhase = 1;
+            ballSpeed = 1.5;
+            document.body.className = 'phase-1';
+        }
+
+        function nextPhase() {
+            if (currentPhase === 1 && score >= 23) {
+                currentPhase = 2;
+                ballSpeed = 2;
+                document.body.className = 'phase-2';
+            } else if (currentPhase === 2 && score >= 39) {
+                currentPhase = 3;
+                ballSpeed = 4;
+                document.body.className = 'phase-3';
+            } else if (currentPhase === 3 && score >= 54) {
+                alert('Você venceu!');
+                resetGame();
+            }
+        }
+
+        canvas.addEventListener('pointerdown', (event) => {
+            balls.forEach((ball, index) => {
+                const dist = Math.hypot(event.clientX - ball.x, event.clientY - ball.y);
+                if (dist < ball.size) {
+                    balls.splice(index, 1);
+                    score++;
+                    document.getElementById('score').textContent = score;
+                    nextPhase();
+                }
+            });
+        });
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            drawPlayer();
+            drawBalls();
+            updateBalls();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        setInterval(createBall, 1000);
+
+        gameLoop();
+    </script>
+</body>
+</html>
