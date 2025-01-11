@@ -184,19 +184,23 @@
         }
 ///////////////////////////////////////////////////////
         // Substitua o evento pointerdown por ambos os eventos:
-canvas.addEventListener('pointerdown', handleTouch);
+        canvas.addEventListener('pointerdown', handleTouch);
 canvas.addEventListener('touchstart', handleTouch);
 
 function handleTouch(event) {
     // Impede o comportamento padrão (como rolar a página)
     event.preventDefault();
 
-    // Obtém a posição correta no canvas
-    const touchX = event.clientX || (event.touches ? event.touches[0].clientX : 0);
-    const touchY = event.clientY || (event.touches ? event.touches[0].clientY : 0);
+    // Obtém a posição do canvas na página
+    const rect = canvas.getBoundingClientRect();
+    
+    // Ajusta as coordenadas do toque para a posição dentro do canvas
+    const touchX = (event.clientX || (event.touches ? event.touches[0].clientX : 0)) - rect.left;
+    const touchY = (event.clientY || (event.touches ? event.touches[0].clientY : 0)) - rect.top;
 
     balls.forEach((ball, index) => {
         const dist = Math.hypot(touchX - ball.x, touchY - ball.y);
+        
         if (dist < ball.size) {
             balls.splice(index, 1);
             score++;
@@ -205,8 +209,6 @@ function handleTouch(event) {
         }
     });
 }
-
-
         function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
